@@ -1,0 +1,42 @@
+{
+  "name": "vue-datepicker",
+  "version": "1.0.0",
+  "description": "Datepicker component",
+  "main": "app.js",
+  "scripts": {
+    "test": "node app.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/watson-yan/vue-datepicker.git"
+  },
+  "keywords": [
+    "datepiker"
+  ],
+  "author": "Hua Yan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/watson-yan/vue-datepicker/issues"
+  },
+  "homepage": "https://github.com/watson-yan/vue-datepicker#readme",
+  "devDependencies": {
+    "vue-loader": "^11.3.4",
+    "webpack": "^2.4.1",
+    "babel-core": "^6.18.2",
+    "babel-plugin-transform-runtime": "^6.15.0",
+    "babel-preset-es2015": "^6.18.0",
+    "css-loader": "^0.26.0",
+    "node-sass": "^3.13.0",
+    "postcss-loader": "^1.3.3",
+    "sass": "^0.5.0",
+    "sass-loader": "^4.0.2",
+    "vue-template-compiler": "^2.1.3",
+    "file-loader": "^0.9.0",
+    "url-loader": "^0.5.7",
+    "ejs": "^2.5.6",
+    "express": "^4.15.2"
+  },
+  "dependencies": {
+    "vue": "^2.2.6"
+  }
+}
