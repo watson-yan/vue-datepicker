@@ -1,6 +1,6 @@
 <template>
     <div class="vue-datepicker">
-        <input @click.stop="show=!show" v-model="current" type="text" readonly>
+        <input @click.stop="show=!show" :value="current | dateFormat" type="text" readonly>
         <div v-if="show" class="vue-datepicker-wrap">
             <div class="vue-datepicker-header" @click.stop="">
                 <span @click.stop="switchMonth(-1)" class="vue-datepicker-header-btn vue-datepicker-header-btn-pre">&lt;</span>
@@ -24,7 +24,10 @@
                     <tbody>
                         <tr v-for="week of list">
                             <td v-for="weekday of week" @click="pick(weekday)"
-                                :class="{'flag': weekday.flag, 'active': !weekday.flag && weekday.text == select.date}">
+                                :class="{
+                                    'flag': weekday.flag, 
+                                    'active': !weekday.flag && weekday.text == current.date
+                                         && select.month == current.month && select.year == current.year}">
                                 {{weekday.text}}
                             </td>
                         </tr>
@@ -49,7 +52,7 @@
 <style lang="sass">
     .vue-datepicker {
         &>input {
-            padding: 5px;
+            padding: 5px 10px;
             width: 200px;
             line-height: 24px;
             border: 1px solid #BFCBD7;
@@ -96,7 +99,7 @@
                     thead {
                         line-height: 30px;
                         font-size: 12px;
-                        background: #e1edfa;
+                        background: #eee;
                     }
                     tbody {
                         tr {
@@ -110,8 +113,7 @@
                                     background: #008afe;
                                 }
                                 &.flag {
-                                    color: #888;
-                                    background: #f0f0f0;
+                                    color: #999;
                                 }
                             }
                             td:hover {
@@ -196,10 +198,7 @@
                     }
                     this.lastMonthEndDate = pre.getDate()
                     // 获取日历排表
-                    this.getDateList()
-                    // 触发父组件的传过来的picked事件。三个参数: 年，月，日
-                    this.$emit('picked', this.select.year, this.select.month, this.select.date)
-                    this.current = `${this.select.year}-${this.select.month}-${this.select.date}`
+                    this.getDateList()    
                 },
                 deep: true
             },
@@ -226,8 +225,22 @@
         },
         created() {
             this.transform(this.moment)
-            // 获得年份列表
-            this.getYears()
+            this.complete()
+            // 获得年份列表： 1900-2100
+            for(let i = 1900; i <= 2100; i++) {
+                this.years.push(i)
+            }
+        },
+        filters: {
+            // 日期格式过滤器
+            dateFormat(val) {
+                 if (!val) {
+                     return ''
+                 }
+                 return `${val.year}-${val.month}-${val.date}`.replace(/\d+/g, (a) => {
+                     return (a.length === 4) ? a : ((a.length === 2) ? a : ('0' + a))
+                 })
+            }
         },
         methods: {
             /**
@@ -329,27 +342,35 @@
                     } else {
                         this.transform(new Date(this.select.year, this.select.month, parseInt(day.text)))
                     }
+                } else {
+                    this.transform(new Date(this.select.year, this.select.month - 1, parseInt(day.text)))
                 }
-                this.transform(new Date(this.select.year, this.select.month - 1, parseInt(day.text)))
+                this.complete()
             },
             // 绑定事件：点击关闭日历面板
             bindEvent() {
                 this.show = false
                 this.selectYear = false
             },
-            // 获得年份列表 1900-2100
-            getYears() {
-                for(let i = 1900; i <= 2100; i++) {
-                    this.years.push(i)
-                }
-            },
             // 选取年
             pickYear(n) {
                 this.transform(new Date(n, this.select.month - 1, this.select.date))
+                this.complete()
             },
             // 选取月
             pickMonth(n) {
                 this.transform(new Date(this.select.year, n - 1, this.select.date))
+                this.complete()
+            },
+            // 更改选中时间并向父组件派发事件
+            complete() {
+                // 触发父组件的传过来的picked事件。三个参数: 年，月，日
+                this.$emit('picked', this.select.year, this.select.month, this.select.date)
+                this.current = {
+                    year: this.select.year,
+                    month: this.select.month,
+                    date: this.select.date
+                }
             }
         }
     }
