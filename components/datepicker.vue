@@ -1,13 +1,14 @@
 <template>
     <div class="vue-datepicker">
-        <input type="text">
-        <div class="vue-datepicker-wrap">
-            <div class="vue-datepicker-header">
-                <span @click="switchMonth(-1)" class="vue-datepicker-header-btn vue-datepicker-header-btn-pre">&lt;</span>
-                <span class="vue-datepicker-header-btn vue-datepicker-header-btn-day">
+        <input @click.stop="show=!show" v-model="current" type="text" readonly>
+        <div v-if="show" class="vue-datepicker-wrap">
+            <div class="vue-datepicker-header" @click.stop="">
+                <span @click.stop="switchMonth(-1)" class="vue-datepicker-header-btn vue-datepicker-header-btn-pre">&lt;</span>
+                <span @click.stop="selectYear=!selectYear"
+                     class="vue-datepicker-header-btn vue-datepicker-header-btn-day">
                     {{select.year}} 年 {{select.month}} 月
                 </span>
-                <span @click="switchMonth(1)" class="vue-datepicker-header-btn vue-datepicker-header-btn-next">&gt;</span>
+                <span @click.stop="switchMonth(1)" class="vue-datepicker-header-btn vue-datepicker-header-btn-next">&gt;</span>
             </div>
             <div class="vue-datepicker-content">
                 <table>
@@ -22,22 +23,48 @@
                     </thead>
                     <tbody>
                         <tr v-for="week of list">
-                            <td v-for="weekday of week" 
+                            <td v-for="weekday of week" @click="pick(weekday)"
                                 :class="{'flag': weekday.flag, 'active': !weekday.flag && weekday.text == select.date}">
                                 {{weekday.text}}
                             </td>
                         </tr>
                     </tbody>
                 </table>
+                <div v-if="selectYear" class="vue-date-picker-year-panel">
+                    <ul ref="year">
+                        <li v-for="y of years" @click.stop="pickYear(y)" :class="{'active': y == select.year}">{{y}}</li>
+                    </ul>
+                    <ul ref="month">
+                        <li v-for="(m, $index) of months" 
+                            @click.stop="pickMonth($index + 1)" 
+                            :class="{'active': $index + 1 == select.month}">
+                            {{m}}
+                        </li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 </template>
 <style lang="sass">
     .vue-datepicker {
+        &>input {
+            padding: 5px;
+            width: 200px;
+            line-height: 24px;
+            border: 1px solid #BFCBD7;
+            border-radius: 3px;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+            &:focus {
+                border: 1px solid #20a0ff;
+            }
+        }
         .vue-datepicker-wrap {
             width: 240px;
             box-shadow: 2px 2px 8px #bdb8b8;
+            z-index: 999;
             .vue-datepicker-header {
                 padding: 0px 15px;
                 font-size: 14px;
@@ -62,6 +89,7 @@
                 }
             }
             .vue-datepicker-content {
+                position: relative;
                 table {
                     width: 100%;
                     border-collapse: collapse;
@@ -77,7 +105,6 @@
                                 font-size: 12px;
                                 text-align: center;
                                 cursor: pointer;
-                                border: 1px solid #ccc;
                                 &.active, &.active:hover {
                                     color: #fff;
                                     background: #008afe;
@@ -93,6 +120,37 @@
                         }
                     }
                 }
+                .vue-date-picker-year-panel {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: #fff;
+                    ul {
+                        width: 50%;
+                        height: 100%;
+                        margin: 0;
+                        padding-left: 0;
+                        box-sizing: border-box;
+                        overflow-y: auto;
+                        float: left;
+                        list-style: none;
+                        li {
+                            font-size: 14px;
+                            text-align: center;
+                            line-height: 30px;
+                            cursor: pointer;
+                            &.active {
+                                color: #fff;
+                                background: #007acc;
+                            }
+                        }
+                        &:first-child {
+                            border-right: 1px solid #007acc;
+                        }
+                    }
+                }
             }
         }
     }
@@ -101,25 +159,30 @@
     export default {
         props: {
             moment: {
-                type: String,
+                type: Number,
                 default() {
-                    return new Date().toLocaleString()
+                    return new Date().getTime()
                 }
             }
         },
         data() {
             return {
-                select: {
+                show: false,    // 控制日历面板的显示与隐藏
+                selectYear: false,  // 控制年份的面板的显示和隐藏
+                current: '',    // 已选择的日期时间。yyyy-MM-dd
+                select: {       // 已选择的日期对象
                     year: '',
                     month: '',
                     date: '',
                     day: ''
                 },
-                currentMonthFirstDay: null,
-                currentMonthEndDate: null,
-                currentMonthEndDay: null,
-                lastMonthEndDate: null,
-                list: []
+                currentMonthFirstDay: null, // 当前月的1号属于星期几
+                currentMonthEndDate: null,  // 当前月的最后一天是几号
+                currentMonthEndDay: null,   // 当前月的最后一天属于星期几
+                lastMonthEndDate: null,     // 上个月的最后一天是几号
+                list: [],   // 日历的二维数组
+                years: [],  // 1900-2100
+                months: ['一月','二月','三月','四月','五月','六月','七月','八月','九月','十月','十一月','十二月']
             }
         },
         watch: {
@@ -134,12 +197,37 @@
                     this.lastMonthEndDate = pre.getDate()
                     // 获取日历排表
                     this.getDateList()
+                    // 触发父组件的传过来的picked事件。三个参数: 年，月，日
+                    this.$emit('picked', this.select.year, this.select.month, this.select.date)
+                    this.current = `${this.select.year}-${this.select.month}-${this.select.date}`
                 },
                 deep: true
+            },
+            show(newVal) {
+                if (newVal) {
+                    document.addEventListener('click', this.bindEvent)
+                } else {
+                    document.removeEventListener('click', this.bindEvent)
+                }
+            },
+            // 打开年份选择器的时候使当前年份、月份出现在窗口顶部
+            selectYear(newVal) {
+                if (newVal) {
+                    this.$nextTick(() => {
+                        const year = this.$refs.year
+                        const month = this.$refs.month
+                        const y = year.getElementsByClassName('active')[0].innerHTML
+                        const m = month.getElementsByClassName('active')[0].innerHTML
+                        year.scrollTop = (y - 1900) * 30
+                        month.scrollTop = (this.select.month - 1) * 30
+                    })
+                }
             }
         },
         created() {
             this.transform(this.moment)
+            // 获得年份列表
+            this.getYears()
         },
         methods: {
             /**
@@ -184,7 +272,7 @@
                 const nextDays = 7 - (leftDays % 7)
 
                 for (let i = 0; i < lineNumber; i++) {
-                    if (i === lineNumber - 1 && nextDays > 0) {
+                    if (i === lineNumber - 1 && nextDays > 0 && nextDays !== 7) {
                         this.list[lineNumber] = 
                             this.numberList(temp, this.currentMonthEndDate)
                             .concat(this.numberList(1, nextDays, true))
@@ -194,6 +282,12 @@
                     temp = temp + 7
                 }
             },
+            /*
+            * 获得日历数组
+            * start: 开始日
+            * end: 结束日
+            * flag： boolean值，判断是否属于本月
+            */
             numberList(start, end, flag) {
                 let list = []
                 for (let i = start; i <= end; i++) {
@@ -204,6 +298,9 @@
                 }
                 return list
             },
+            /*
+            * 切换月份， -1为当前月份-1，+1为当前月份+1
+            */
             switchMonth(n) {
                 let year = this.select.year
                 if (n===-1) {
@@ -222,6 +319,37 @@
                         this.transform(new Date(year, next - 1, this.select.date))
                     }
                 }
+            },
+            pick(day) {
+                if (!!day.flag) {
+                    // 当页日历上可能还会显示部分上个月或者下个月的部分天数，根据标识来做判断
+                    // 并对月份作出相应的处理
+                    if (parseInt(day.text) > 15) {
+                        this.transform(new Date(this.select.year, this.select.month - 2, parseInt(day.text)))
+                    } else {
+                        this.transform(new Date(this.select.year, this.select.month, parseInt(day.text)))
+                    }
+                }
+                this.transform(new Date(this.select.year, this.select.month - 1, parseInt(day.text)))
+            },
+            // 绑定事件：点击关闭日历面板
+            bindEvent() {
+                this.show = false
+                this.selectYear = false
+            },
+            // 获得年份列表 1900-2100
+            getYears() {
+                for(let i = 1900; i <= 2100; i++) {
+                    this.years.push(i)
+                }
+            },
+            // 选取年
+            pickYear(n) {
+                this.transform(new Date(n, this.select.month - 1, this.select.date))
+            },
+            // 选取月
+            pickMonth(n) {
+                this.transform(new Date(this.select.year, n - 1, this.select.date))
             }
         }
     }

@@ -7371,29 +7371,92 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 //
 //
 //
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
+//
 
 /* harmony default export */ __webpack_exports__["default"] = ({
     props: {
         moment: {
-            type: String,
+            type: Number,
             default() {
-                return new Date().toLocaleString();
+                return new Date().getTime();
             }
         }
     },
     data() {
         return {
-            select: {
+            show: false, // 控制日历面板的显示与隐藏
+            selectYear: false, // 控制年份的面板的显示和隐藏
+            current: '', // 已选择的日期时间。yyyy-MM-dd
+            select: { // 已选择的日期对象
                 year: '',
                 month: '',
                 date: '',
                 day: ''
             },
-            currentMonthFirstDay: null,
-            currentMonthEndDate: null,
-            currentMonthEndDay: null,
-            lastMonthEndDate: null,
-            list: []
+            currentMonthFirstDay: null, // 当前月的1号属于星期几
+            currentMonthEndDate: null, // 当前月的最后一天是几号
+            currentMonthEndDay: null, // 当前月的最后一天属于星期几
+            lastMonthEndDate: null, // 上个月的最后一天是几号
+            list: [], // 日历的二维数组
+            years: [], // 1900-2100
+            months: ['一月', '二月', '三月', '四月', '五月', '六月', '七月', '八月', '九月', '十月', '十一月', '十二月']
         };
     },
     watch: {
@@ -7408,12 +7471,37 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
                 this.lastMonthEndDate = pre.getDate();
                 // 获取日历排表
                 this.getDateList();
+                // 触发父组件的传过来的picked事件。三个参数: 年，月，日
+                this.$emit('picked', this.select.year, this.select.month, this.select.date);
+                this.current = `${ this.select.year }-${ this.select.month }-${ this.select.date }`;
             },
             deep: true
+        },
+        show(newVal) {
+            if (newVal) {
+                document.addEventListener('click', this.bindEvent);
+            } else {
+                document.removeEventListener('click', this.bindEvent);
+            }
+        },
+        // 打开年份选择器的时候使当前年份、月份出现在窗口顶部
+        selectYear(newVal) {
+            if (newVal) {
+                this.$nextTick(() => {
+                    const year = this.$refs.year;
+                    const month = this.$refs.month;
+                    const y = year.getElementsByClassName('active')[0].innerHTML;
+                    const m = month.getElementsByClassName('active')[0].innerHTML;
+                    year.scrollTop = (y - 1900) * 30;
+                    month.scrollTop = (this.select.month - 1) * 30;
+                });
+            }
         }
     },
     created() {
         this.transform(this.moment);
+        // 获得年份列表
+        this.getYears();
     },
     methods: {
         /**
@@ -7453,7 +7541,7 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             const nextDays = 7 - leftDays % 7;
 
             for (let i = 0; i < lineNumber; i++) {
-                if (i === lineNumber - 1 && nextDays > 0) {
+                if (i === lineNumber - 1 && nextDays > 0 && nextDays !== 7) {
                     this.list[lineNumber] = this.numberList(temp, this.currentMonthEndDate).concat(this.numberList(1, nextDays, true));
                 } else {
                     this.list.push(this.numberList(temp, temp + 6));
@@ -7461,6 +7549,12 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
                 temp = temp + 7;
             }
         },
+        /*
+        * 获得日历数组
+        * start: 开始日
+        * end: 结束日
+        * flag： boolean值，判断是否属于本月
+        */
         numberList(start, end, flag) {
             let list = [];
             for (let i = start; i <= end; i++) {
@@ -7471,6 +7565,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
             }
             return list;
         },
+        /*
+        * 切换月份， -1为当前月份-1，+1为当前月份+1
+        */
         switchMonth(n) {
             let year = this.select.year;
             if (n === -1) {
@@ -7488,6 +7585,37 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
                     this.transform(new Date(year, next - 1, this.select.date));
                 }
             }
+        },
+        pick(day) {
+            if (!!day.flag) {
+                // 当页日历上可能还会显示部分上个月或者下个月的部分天数，根据标识来做判断
+                // 并对月份作出相应的处理
+                if (parseInt(day.text) > 15) {
+                    this.transform(new Date(this.select.year, this.select.month - 2, parseInt(day.text)));
+                } else {
+                    this.transform(new Date(this.select.year, this.select.month, parseInt(day.text)));
+                }
+            }
+            this.transform(new Date(this.select.year, this.select.month - 1, parseInt(day.text)));
+        },
+        // 绑定事件：点击关闭日历面板
+        bindEvent() {
+            this.show = false;
+            this.selectYear = false;
+        },
+        // 获得年份列表 1900-2100
+        getYears() {
+            for (let i = 1900; i <= 2100; i++) {
+                this.years.push(i);
+            }
+        },
+        // 选取年
+        pickYear(n) {
+            this.transform(new Date(n, this.select.month - 1, this.select.date));
+        },
+        // 选取月
+        pickMonth(n) {
+            this.transform(new Date(this.select.year, n - 1, this.select.date));
         }
     }
 });
@@ -7514,6 +7642,11 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 	data() {
 		return {};
 	},
+	methods: {
+		picked(year, month, date) {
+			console.warn(`你选择了${ year }年${ month }月${ date }日`);
+		}
+	},
 	components: {
 		datepicker: __WEBPACK_IMPORTED_MODULE_0__datepicker_vue___default.a
 	}
@@ -7528,7 +7661,7 @@ exports = module.exports = __webpack_require__(7)();
 
 
 // module
-exports.push([module.i, "\n.vue-datepicker .vue-datepicker-wrap {\n  width: 240px;\n  box-shadow: 2px 2px 8px #bdb8b8;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header {\n    padding: 0px 15px;\n    font-size: 14px;\n    text-align: center;\n    line-height: 36px;\n    border-bottom: 1px solid #ccc;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header .vue-datepicker-header-btn {\n      cursor: pointer;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header .vue-datepicker-header-btn:hover {\n        color: #008afe;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header .vue-datepicker-header-btn-pre {\n      float: left;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header .vue-datepicker-header-btn-next {\n      float: right;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table {\n    width: 100%;\n    border-collapse: collapse;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table thead {\n      line-height: 30px;\n      font-size: 12px;\n      background: #e1edfa;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr {\n      line-height: 28px;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td {\n        font-size: 12px;\n        text-align: center;\n        cursor: pointer;\n        border: 1px solid #ccc;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td.active, .vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td.active:hover {\n          color: #fff;\n          background: #008afe;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td.flag {\n          color: #888;\n          background: #f0f0f0;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td:hover {\n        background: #eee;\n}\n", ""]);
+exports.push([module.i, "\n.vue-datepicker > input {\n  padding: 5px;\n  width: 200px;\n  line-height: 24px;\n  border: 1px solid #BFCBD7;\n  border-radius: 3px;\n  font-size: 14px;\n  outline: none;\n  cursor: pointer;\n}\n.vue-datepicker > input:focus {\n    border: 1px solid #20a0ff;\n}\n.vue-datepicker .vue-datepicker-wrap {\n  width: 240px;\n  box-shadow: 2px 2px 8px #bdb8b8;\n  z-index: 999;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header {\n    padding: 0px 15px;\n    font-size: 14px;\n    text-align: center;\n    line-height: 36px;\n    border-bottom: 1px solid #ccc;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header .vue-datepicker-header-btn {\n      cursor: pointer;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header .vue-datepicker-header-btn:hover {\n        color: #008afe;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header .vue-datepicker-header-btn-pre {\n      float: left;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-header .vue-datepicker-header-btn-next {\n      float: right;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content {\n    position: relative;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table {\n      width: 100%;\n      border-collapse: collapse;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table thead {\n        line-height: 30px;\n        font-size: 12px;\n        background: #e1edfa;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr {\n        line-height: 28px;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td {\n          font-size: 12px;\n          text-align: center;\n          cursor: pointer;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td.active, .vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td.active:hover {\n            color: #fff;\n            background: #008afe;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td.flag {\n            color: #888;\n            background: #f0f0f0;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content table tbody tr td:hover {\n          background: #eee;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content .vue-date-picker-year-panel {\n      position: absolute;\n      top: 0;\n      left: 0;\n      width: 100%;\n      height: 100%;\n      background: #fff;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content .vue-date-picker-year-panel ul {\n        width: 50%;\n        height: 100%;\n        margin: 0;\n        padding-left: 0;\n        box-sizing: border-box;\n        overflow-y: auto;\n        float: left;\n        list-style: none;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content .vue-date-picker-year-panel ul li {\n          font-size: 14px;\n          text-align: center;\n          line-height: 30px;\n          cursor: pointer;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content .vue-date-picker-year-panel ul li.active {\n            color: #fff;\n            background: #007acc;\n}\n.vue-datepicker .vue-datepicker-wrap .vue-datepicker-content .vue-date-picker-year-panel ul:first-child {\n          border-right: 1px solid #007acc;\n}\n", ""]);
 
 // exports
 
@@ -7825,26 +7958,59 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
   return _c('div', {
     staticClass: "vue-datepicker"
   }, [_c('input', {
+    directives: [{
+      name: "model",
+      rawName: "v-model",
+      value: (_vm.current),
+      expression: "current"
+    }],
     attrs: {
-      "type": "text"
+      "type": "text",
+      "readonly": ""
+    },
+    domProps: {
+      "value": (_vm.current)
+    },
+    on: {
+      "click": function($event) {
+        $event.stopPropagation();
+        _vm.show = !_vm.show
+      },
+      "input": function($event) {
+        if ($event.target.composing) { return; }
+        _vm.current = $event.target.value
+      }
     }
-  }), _vm._v(" "), _c('div', {
+  }), _vm._v(" "), (_vm.show) ? _c('div', {
     staticClass: "vue-datepicker-wrap"
   }, [_c('div', {
-    staticClass: "vue-datepicker-header"
+    staticClass: "vue-datepicker-header",
+    on: {
+      "click": function($event) {
+        $event.stopPropagation();
+      }
+    }
   }, [_c('span', {
     staticClass: "vue-datepicker-header-btn vue-datepicker-header-btn-pre",
     on: {
       "click": function($event) {
+        $event.stopPropagation();
         _vm.switchMonth(-1)
       }
     }
   }, [_vm._v("<")]), _vm._v(" "), _c('span', {
-    staticClass: "vue-datepicker-header-btn vue-datepicker-header-btn-day"
+    staticClass: "vue-datepicker-header-btn vue-datepicker-header-btn-day",
+    on: {
+      "click": function($event) {
+        $event.stopPropagation();
+        _vm.selectYear = !_vm.selectYear
+      }
+    }
   }, [_vm._v("\n                " + _vm._s(_vm.select.year) + " 年 " + _vm._s(_vm.select.month) + " 月\n            ")]), _vm._v(" "), _c('span', {
     staticClass: "vue-datepicker-header-btn vue-datepicker-header-btn-next",
     on: {
       "click": function($event) {
+        $event.stopPropagation();
         _vm.switchMonth(1)
       }
     }
@@ -7855,10 +8021,45 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
       return _c('td', {
         class: {
           'flag': weekday.flag, 'active': !weekday.flag && weekday.text == _vm.select.date
+        },
+        on: {
+          "click": function($event) {
+            _vm.pick(weekday)
+          }
         }
       }, [_vm._v("\n                            " + _vm._s(weekday.text) + "\n                        ")])
     }))
-  }))])])])])
+  }))]), _vm._v(" "), (_vm.selectYear) ? _c('div', {
+    staticClass: "vue-date-picker-year-panel"
+  }, [_c('ul', {
+    ref: "year"
+  }, _vm._l((_vm.years), function(y) {
+    return _c('li', {
+      class: {
+        'active': y == _vm.select.year
+      },
+      on: {
+        "click": function($event) {
+          $event.stopPropagation();
+          _vm.pickYear(y)
+        }
+      }
+    }, [_vm._v(_vm._s(y))])
+  })), _vm._v(" "), _c('ul', {
+    ref: "month"
+  }, _vm._l((_vm.months), function(m, $index) {
+    return _c('li', {
+      class: {
+        'active': $index + 1 == _vm.select.month
+      },
+      on: {
+        "click": function($event) {
+          $event.stopPropagation();
+          _vm.pickMonth($index + 1)
+        }
+      }
+    }, [_vm._v("\n                        " + _vm._s(m) + "\n                    ")])
+  }))]) : _vm._e()])]) : _vm._e()])
 },staticRenderFns: [function (){var _vm=this;var _h=_vm.$createElement;var _c=_vm._self._c||_h;
   return _c('thead', [_c('th', [_vm._v("日")]), _vm._v(" "), _c('th', [_vm._v("一")]), _vm._v(" "), _c('th', [_vm._v("二")]), _vm._v(" "), _c('th', [_vm._v("三")]), _vm._v(" "), _c('th', [_vm._v("四")]), _vm._v(" "), _c('th', [_vm._v("五")]), _vm._v(" "), _c('th', [_vm._v("六")])])
 }]}
@@ -7879,7 +8080,11 @@ module.exports={render:function (){var _vm=this;var _h=_vm.$createElement;var _c
     staticStyle: {
       "width": "502px"
     }
-  }, [_c('datepicker')], 1)])
+  }, [_c('datepicker', {
+    on: {
+      "picked": _vm.picked
+    }
+  })], 1)])
 },staticRenderFns: []}
 module.exports.render._withStripped = true
 if (false) {
