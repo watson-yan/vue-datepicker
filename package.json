@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/watson-yan/vue-datepicker.git"
+    "url": "https://github.com/watson-yan/vue-datepicker.git"
   },
   "keywords": [
     "datepiker"
