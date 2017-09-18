@@ -49,7 +49,7 @@
         </div>
     </div>
 </template>
-<style lang="sass">
+<style lang="scss">
     .vue-datepicker {
         &>input {
             padding: 5px 10px;
